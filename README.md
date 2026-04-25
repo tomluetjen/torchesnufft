@@ -133,7 +133,7 @@ For more detailed examples and use cases, see the `examples` directory:
 
 - [`examples/uniform.py`](examples/uniform.py) - Standard DFT & iDFT using `torchesnufft` NUFFTs
 - [`examples/radial.py`](examples/radial.py) - `torchesnufft` 2D NUFFT functions on radial data
-- [`examples/radial.py`](examples/radial.py) - `torchesnufft` 1D NUFFT functions on randomly sampled data
+- [`examples/rand.py`](examples/rand.py) - `torchesnufft` 1D NUFFT functions on randomly sampled data
 
 ## Performance compared to torchkbnufft
 ```console
