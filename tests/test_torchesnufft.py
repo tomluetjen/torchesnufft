@@ -1,7 +1,7 @@
 import pytest
 import torch
 
-from torchesnufft.functional import nufft1, nufft2, nufft3
+from torchesnufft.functional import nufft1, nufft2, nufft3, nufft_inv
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -41,6 +41,7 @@ def _generate_random_data_nufft2(batch_size, channel_size, M, N):
 
 
 def _generate_random_data_nufft3(batch_size, channel_size, M, N, d):
+    N_out = int(torch.prod(torch.tensor(N)).item())
     x = 2 * torch.pi * torch.rand(size=(M,))
     y = 2 * torch.pi * torch.rand(size=(M,))
     z = 2 * torch.pi * torch.rand(size=(M,))
@@ -50,9 +51,9 @@ def _generate_random_data_nufft3(batch_size, channel_size, M, N, d):
         xyz = torch.stack((x, y))
     elif d == 3:
         xyz = torch.stack((x, y, z))
-    s = 2 * torch.pi * torch.rand(size=(N,))
-    t = 2 * torch.pi * torch.rand(size=(N,))
-    u = 2 * torch.pi * torch.rand(size=(N,))
+    s = 2 * torch.pi * torch.rand(size=(N_out,))
+    t = 2 * torch.pi * torch.rand(size=(N_out,))
+    u = 2 * torch.pi * torch.rand(size=(N_out,))
     if d == 1:
         stu = s.unsqueeze(0)
     elif d == 2:
@@ -168,6 +169,31 @@ def check_nufft3(batch_size, channel_size, M, N, d):
     assert torch.allclose(nufft_result, manual_result, atol=1e-4)
 
 
+@pytest.mark.parametrize("batch_size", [1, 2])
+@pytest.mark.parametrize("channel_size", [1, 3])
+@pytest.mark.parametrize("M", [8, 11])
+@pytest.mark.parametrize("N", [(3,), (2, 5), (4, 3, 4)])
+@pytest.mark.parametrize("d", [1, 2, 3])
+def test_nufft3(batch_size, channel_size, M, N, d):
+    check_nufft3(batch_size, channel_size, M, N, d)
+
+
+def check_nufft_inv(batch_size, channel_size, M, N):
+    xyz, f, N, M = _generate_random_data_nufft2(batch_size, channel_size, M, N)
+    nufft_result = nufft2(-xyz.to(device), f.to(device))
+    reco = nufft_inv(xyz.to(device), nufft_result, N) / torch.prod(torch.tensor(N))
+    # TODO: investigate the influence of eps on accuracy
+    assert torch.allclose(reco, f.to(device), atol=1e-1)
+
+
+@pytest.mark.parametrize("batch_size", [1, 2])
+@pytest.mark.parametrize("channel_size", [1, 3])
+@pytest.mark.parametrize("M", [4983, 5000])
+@pytest.mark.parametrize("N", [(3,), (2, 5), (4, 3, 4)])
+def test_nufft_inv(batch_size, channel_size, M, N):
+    check_nufft_inv(batch_size, channel_size, M, N)
+
+
 def check_nufft1_autograd(batch_size, channel_size, M, N):
     xyz, c, N, M = _generate_random_data_nufft1(batch_size, channel_size, M, N)
     xyz = xyz.to(dtype=torch.float64, device="cpu").requires_grad_()
@@ -225,3 +251,22 @@ def check_nufft3_autograd(batch_size, channel_size, M, N, d):
 @pytest.mark.parametrize("d", [1, 2, 3])
 def test_nufft3_autograd(batch_size, channel_size, M, N, d):
     check_nufft3_autograd(batch_size, channel_size, M, N, d)
+
+
+def check_nufft_inv_autograd(batch_size, channel_size, M, N):
+    xyz, c, N, M = _generate_random_data_nufft1(batch_size, channel_size, M, N)
+    xyz = xyz.to(dtype=torch.float64, device="cpu").requires_grad_()
+    c = c.to(dtype=torch.complex128, device="cpu").requires_grad_()
+    assert torch.autograd.gradcheck(
+        nufft_inv,
+        (xyz, c, N),
+        nondet_tol=1e-8,
+    )
+
+
+@pytest.mark.parametrize("batch_size", [1, 2])
+@pytest.mark.parametrize("channel_size", [1, 3])
+@pytest.mark.parametrize("M", [8, 11])
+@pytest.mark.parametrize("N", [(3,), (2, 5), (4, 3, 4)])
+def test_nufft_inv_autograd(batch_size, channel_size, M, N):
+    check_nufft_inv_autograd(batch_size, channel_size, M, N)

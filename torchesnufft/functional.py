@@ -97,3 +97,57 @@ def nufft3(x, c, s, eps=1e-6):
         p_block *= helpers.psi_hat(p, qj, wj, s_prime[dim, :], w, alpha[dim], phi_qj)
     f = b / p_block
     return f
+
+
+def nufft_inv(x, c, N, eps=1e-6):
+    # Setup
+    d = len(N)
+    device = c.device
+    alpha, beta, h, n, p, phi_qj, qj, w, wj = helpers.setup(d, N, eps, x.dtype, device)
+    # Density compensation
+    density = get_density(x, c, N, eps)
+    density = density.reshape(c.shape)
+    # Spreading
+    b = spreadinterp.spread(x, c * density, alpha, beta, d, h, n)
+    # FFT
+    b_hat = torch.fft.fftshift(
+        torch.fft.ifftn(b, dim=tuple(range(-d, 0)), norm="forward"), dim=tuple(range(-d, 0))
+    )
+    # Correction
+    p_list = list()
+    for dim in range(d):
+        mode_idx = torch.arange(
+            -int((N[dim] - (N[dim] % 2)) / 2),
+            int((N[dim] - (N[dim] % 2)) / 2 + N[dim] % 2),
+            device=device,
+        )
+        p_list.append(1 / helpers.psi_hat(p, qj, wj, mode_idx, w, alpha[dim], phi_qj))
+    p_block = helpers.outer(p_list)
+    return (
+        p_block[None, None, ...]
+        * b_hat[
+            (slice(None), slice(None))
+            + tuple(
+                slice(
+                    int(n[i].item()) // 2 - int(N[i]) // 2,
+                    int(n[i].item()) // 2 - int(N[i]) // 2 + int(N[i]),
+                )
+                for i in range(len(N))
+            )
+        ]
+    )
+
+
+def get_density(x, c, N, eps=1e-6, n_iter=10):
+    # Pipe JG, Menon P. Sampling density compensation in MRI: rationale and an iterative numerical solution. Magn Reson Med. 1999 Jan;41(1):179-86. doi: 10.1002/(sici)1522-2594(199901)41:1<179::aid-mrm25>3.0.co;2-v. PMID: 10025627.
+    d = len(N)
+    device = c.device
+    alpha, beta, h, n, _, _, _, _, _ = helpers.setup(d, N, eps, x.dtype, device)
+    N_total = torch.prod(torch.tensor(N)).item()
+    density = torch.abs(torch.ones_like(c))
+    for _ in range(n_iter):
+        b = spreadinterp.spread(x, density, alpha, beta, d, h, n)
+        b = spreadinterp.interp(x, b, alpha, beta, d, h, n)
+        density = density / torch.clamp(b, min=torch.finfo(x.dtype).eps)
+    # Normalize so mass of density equals total number of grid points, resulting in a constant density of 1 for uniform sampling
+    return N_total * density / density.sum(dim=-1, keepdim=True)

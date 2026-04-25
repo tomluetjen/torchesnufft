@@ -3,7 +3,7 @@
 [![LICENSE](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![Python](https://img.shields.io/badge/python-3.11%20|%203.12%20|%203.13-blue)](#) [![CI](https://github.com/tomluetjen/torchesnufft/actions/workflows/python-app.yml/badge.svg?branch=main)](https://github.com/tomluetjen/torchesnufft/actions/workflows/python-app.yml) [![Coverage](https://codecov.io/gh/tomluetjen/torchesnufft/branch/main/graph/badge.svg)](https://codecov.io/gh/tomluetjen/torchesnufft)
 
 ## About
-WORK IN PROGESS: `torchesnufft` implements the non-uniform fast Fourier transforms (Type 1, Type 2 & Type 3) with an exponential of semicircle kernel [1, 2] in PyTorch. All transforms work with batched multi-channel data and are fully differentiable. This allows backpropagation through `torchesnufft` transforms to train neural networks or to solve optimization problems with [`torch.optim`](https://docs.pytorch.org/docs/stable/optim.html).
+`torchesnufft` implements the non-uniform fast Fourier transform (Type 1, Type 2 & Type 3) with an exponential of semicircle kernel [1, 2] and its' inverse [3] in PyTorch. All transforms work with batched multi-channel data and are fully differentiable. This allows backpropagation through `torchesnufft` transforms to train neural networks or to solve optimization problems with [`torch.optim`](https://docs.pytorch.org/docs/stable/optim.html).
 
 
 ## Installation
@@ -101,30 +101,59 @@ f = nufft3(xyz, c, stu)
 
 ```
 
+### Inverse
+```python
+import torch
+
+from torchesnufft.functional import nufft2, nufft_inv
+
+# number of nonuniform points
+M = 10000
+
+# the nonuniform points
+x = 2 * torch.pi * torch.rand(size=(M,))
+y = 2 * torch.pi * torch.rand(size=(M,))
+z = 2 * torch.pi * torch.rand(size=(M,))
+xyz = torch.stack((x, y, z))
+# number of Fourier modes
+N1, N2, N3 = 5, 7, 2
+
+# the Fourier mode coefficients
+f = torch.randn(size=(1, 1, N1, N2, N3)) + 1j * torch.randn(size=(1, 1, N1, N2, N3))
+
+# calculate the type-2 NUFFT (forward)
+c = nufft2(-xyz, f)
+
+# calculate the type-2 NUFFT (inverse)
+f_reco = nufft_inv(xyz, c, (N1, N2, N3)) / (N1 * N2 * N3)
+```
+
 ## Examples
 For more detailed examples and use cases, see the `examples` directory:
 
-- [`examples/uniform.py`](examples/uniform.py) - Standard DFT using `torchesnufft` NUFFTs
+- [`examples/uniform.py`](examples/uniform.py) - Standard DFT & iDFT using `torchesnufft` NUFFTs
+- [`examples/radial.py`](examples/radial.py) - `torchesnufft` 2D NUFFT functions on radial data
+- [`examples/radial.py`](examples/radial.py) - `torchesnufft` 1D NUFFT functions on randomly sampled data
 
 ## Performance compared to torchkbnufft
 ```console
----------------------------------------------------------------------- benchmark 'NUFFT (Type 1) on random data': 4 tests ----------------------------------------------------------------------
-Name (time in ms)           Min                   Max                Mean              StdDev              Median                 IQR            Outliers      OPS            Rounds  Iterations
-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-torchesnufft (GPU)      17.3531 (1.0)         22.4222 (1.0)       18.9538 (1.0)        1.6382 (1.0)       18.0799 (1.0)        3.2203 (1.0)          15;0  52.7600 (1.0)          56           1
-torchkbnufft (GPU)      55.6630 (3.21)        65.6254 (2.93)      63.1279 (3.33)       4.2089 (2.57)      64.9827 (3.59)       3.3200 (1.03)          1;1  15.8409 (0.30)          5           1
-torchkbnufft (CPU)     387.4568 (22.33)      545.6971 (24.34)    452.1273 (23.85)     63.4495 (38.73)    423.9652 (23.45)     91.2222 (28.33)         2;0   2.2118 (0.04)          5           1
-torchesnufft (CPU)     864.3891 (49.81)    1,104.7883 (49.27)    984.4262 (51.94)    107.7794 (65.79)    934.5187 (51.69)    184.9233 (57.42)         3;0   1.0158 (0.02)          5           1
-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------- benchmark 'NUFFT (Type 1) on random data': 4 tests -----------------------------------------------------------------------
+Name (time in ms)           Min                   Max                  Mean             StdDev                Median                IQR            Outliers      OPS            Rounds  Iterations
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+torchesnufft (GPU)      18.7343 (1.0)         24.8683 (1.0)         21.3013 (1.0)       2.2158 (1.0)         20.2273 (1.0)       4.0700 (1.0)          16;0  46.9454 (1.0)          41           1
+torchkbnufft (GPU)     178.5804 (9.53)       198.2222 (7.97)       186.9434 (8.78)      6.7912 (3.06)       186.0647 (9.20)      7.3885 (1.82)          2;0   5.3492 (0.11)          6           1
+torchesnufft (CPU)     938.4318 (50.09)    1,054.7845 (42.41)      989.4232 (46.45)    43.5709 (19.66)      981.3666 (48.52)    55.8505 (13.72)         2;0   1.0107 (0.02)          5           1
+torchkbnufft (CPU)     976.1194 (52.10)    1,065.0852 (42.83)    1,006.7708 (47.26)    35.9041 (16.20)    1,000.6046 (49.47)    47.0543 (11.56)         1;0   0.9933 (0.02)          5           1
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
------------------------------------------------------------------------- benchmark 'NUFFT (Type 2) on random data': 4 tests ------------------------------------------------------------------------
-Name (time in ms)             Min                   Max                  Mean             StdDev                Median                IQR            Outliers      OPS            Rounds  Iterations
-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-torchesnufft (GPU)        24.5631 (1.0)         31.7494 (1.0)         26.8916 (1.0)       2.4724 (1.0)         25.3644 (1.0)       4.6969 (1.0)          11;0  37.1864 (1.0)          40           1
-torchkbnufft (GPU)       148.6083 (6.05)       225.9004 (7.12)       170.7348 (6.35)     26.5956 (10.76)      162.7521 (6.42)     24.2778 (5.17)          1;1   5.8570 (0.16)          7           1
-torchkbnufft (CPU)       766.9130 (31.22)      939.8924 (29.60)      859.7188 (31.97)    64.5078 (26.09)      854.6073 (33.69)    83.2242 (17.72)         2;0   1.1632 (0.03)          5           1
-torchesnufft (CPU)     1,385.0010 (56.39)    1,491.5670 (46.98)    1,457.6868 (54.21)    43.5951 (17.63)    1,466.2686 (57.81)    53.4877 (11.39)         1;0   0.6860 (0.02)          5           1
-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------- benchmark 'NUFFT (Type 2) on random data': 4 tests ------------------------------------------------------------------------
+Name (time in ms)             Min                   Max                  Mean             StdDev                Median                 IQR            Outliers      OPS            Rounds  Iterations
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+torchesnufft (GPU)        26.7485 (1.0)         34.5041 (1.0)         28.5387 (1.0)       2.6961 (1.0)         26.9654 (1.0)        4.6211 (1.0)          10;0  35.0401 (1.0)          38           1
+torchkbnufft (GPU)        41.4610 (1.55)       125.7308 (3.64)        72.9889 (2.56)     36.6247 (13.58)       52.8371 (1.96)      66.2846 (14.34)         2;0  13.7007 (0.39)          7           1
+torchkbnufft (CPU)       444.3747 (16.61)      473.7960 (13.73)      458.3618 (16.06)    10.5870 (3.93)       457.5047 (16.97)     11.2631 (2.44)          2;0   2.1817 (0.06)          5           1
+torchesnufft (CPU)     1,452.8532 (54.32)    1,663.1492 (48.20)    1,564.7025 (54.83)    88.7630 (32.92)    1,563.0342 (57.96)    154.2930 (33.39)         2;0   0.6391 (0.02)          5           1
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 Legend:
   Outliers: 1 Standard Deviation from Mean; 1.5 IQR (InterQuartile Range) from 1st Quartile and 3rd Quartile.
@@ -165,7 +194,9 @@ This package is inspired by
 
 3. [`pytorch-finufft`](https://github.com/flatironinstitute/pytorch-finufft)
 
+4. [`mri-nufft`](https://github.com/mind-inria/mri-nufft)
 
 ## References
 1. Barnett AH, Magland J, af Klinteberg L, ["A Parallel Nonuniform Fast Fourier Transform Library Based on an “Exponential of Semicircle" Kernel"](https://epubs.siam.org/doi/10.1137/18M120885X), Software and High-Performance Computing, 2019
 2. Shih YH, Wright G, Anden J, Blaschke J, Barnett AH, ["cuFINUFFT: a load-balanced GPU library for general-purpose nonuniform FFTs"](https://arxiv.org/abs/2102.08463), PDSEC2021 workshop of the IPDPS2021 conference, 2021
+3. Pipe JG, Menon P. ["Sampling density compensation in MRI: rationale and an iterative numerical solution"](https://onlinelibrary.wiley.com/doi/10.1002/(SICI)1522-2594(199901)41:1%3C179::AID-MRM25%3E3.0.CO;2-V). Magn Reson Med. 1999 Jan;41(1):179-86. doi: 10.1002/(sici)1522-2594(199901)41:1<179::aid-mrm25>3.0.co;2-v. PMID: 10025627.

@@ -2,7 +2,7 @@ import pytest
 import torch
 import torchkbnufft
 
-import torchesnufft
+from torchesnufft.functional import nufft1, nufft2
 
 # Load MNIST once per module and reuse
 torch.manual_seed(0)
@@ -38,23 +38,23 @@ def benchmark_nufft1(benchmark, name, device, random_data):
 
         # Warm-up
         with torch.inference_mode():
-            _ = torchesnufft.functional.nufft1(xyz, c, N)
+            _ = nufft1(-xyz, c, N)
         if device == "cuda":
             torch.cuda.synchronize()
 
         def run():
             with torch.inference_mode():
-                f = torchesnufft.functional.nufft1(xyz, c, N)
+                f = nufft1(-xyz, c, N)
             if device == "cuda":
                 torch.cuda.synchronize()
             return f
     else:  # torchkbnufft
         xyz = torch.reshape(xyz, (xyz.shape[0], -1)).to(device)
-        c = c.to(device)
+        c = torch.reshape(c, (c.shape[0], c.shape[1], -1)).to(device)
 
         # Warm-up
         with torch.inference_mode():
-            nufft_ob = torchkbnufft.KbNufft(im_size=M).to(device)
+            nufft_ob = torchkbnufft.KbNufftAdjoint(im_size=N).to(device)
             _ = nufft_ob(c, xyz)
         if device == "cuda":
             torch.cuda.synchronize()
@@ -83,23 +83,23 @@ def benchmark_nufft2(benchmark, name, device, random_data):
 
         # Warm-up
         with torch.inference_mode():
-            _ = torchesnufft.functional.nufft2(xyz, c)
+            _ = nufft2(xyz, c)
         if device == "cuda":
             torch.cuda.synchronize()
 
         def run():
             with torch.inference_mode():
-                f = torchesnufft.functional.nufft2(xyz, c)
+                f = nufft2(xyz, c)
             if device == "cuda":
                 torch.cuda.synchronize()
             return f
     else:  # torchkbnufft
         xyz = torch.reshape(xyz, (xyz.shape[0], -1)).to(device)
-        c = torch.reshape(c, (c.shape[0], c.shape[1], -1)).to(device)
+        c = c.to(device)
 
         # Warm-up
         with torch.inference_mode():
-            nufft_ob = torchkbnufft.KbNufftAdjoint(im_size=M).to(device)
+            nufft_ob = torchkbnufft.KbNufft(im_size=M).to(device)
             _ = nufft_ob(c, xyz)
         if device == "cuda":
             torch.cuda.synchronize()
