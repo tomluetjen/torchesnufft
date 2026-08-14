@@ -8,7 +8,7 @@
 
 ## Installation
 ```console
-pip install .
+pip install torchesnufft
 ```
 
 ## Basic Usage
