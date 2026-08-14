@@ -98,7 +98,6 @@ c = torch.randn(
 
 # calcuate the type-3 NUFFT
 f = nufft3(xyz, c, stu)
-
 ```
 
 ### Inverse
@@ -127,7 +126,6 @@ c = nufft2(-xyz, f)
 # calculate the type-2 NUFFT inverse via density compensation
 density = get_density(xyz, c, (N1, N2, N3))
 f_reco = nufft1(xyz, c * density, (N1, N2, N3)) / M
-
 ```
 
 ## Examples
