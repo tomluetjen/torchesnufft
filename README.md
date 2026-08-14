@@ -5,6 +5,7 @@
 ## About
 `torchesnufft` implements the non-uniform fast Fourier transform (Type 1, Type 2 & Type 3) with an exponential of semicircle kernel [1, 2] and a simple density compensation routine [3] in PyTorch. All transforms work with batched multi-channel data and are fully differentiable. This allows backpropagation through `torchesnufft` transforms to train neural networks or to solve optimization problems with [`torch.optim`](https://docs.pytorch.org/docs/stable/optim.html).
 
+This package is primarily inspired by [FINUFFT](https://github.com/flatironinstitute/finufft), a high-performance non-uniform fast Fourier transform library developed by Barnett et al.
 
 ## Installation
 ```console
