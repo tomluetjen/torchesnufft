@@ -3,7 +3,7 @@ import torch
 from skimage.data import shepp_logan_phantom
 from skimage.transform import rescale
 
-from torchesnufft.functional import get_density, nufft1, nufft2, nufft_inv
+from torchesnufft.functional import get_density, nufft1, nufft2
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -11,7 +11,7 @@ image = shepp_logan_phantom()
 image = rescale(image, scale=0.4, mode="reflect", channel_axis=None) + 0.0j
 image = torch.from_numpy(image).to(device).unsqueeze(0).unsqueeze(0)
 
-# Set up radial sampling trajectory
+# Set up radial sampling trajectory (commonly used in CT or MRI)
 num_spokes = 600
 num_samples_per_spoke = 320
 M = num_spokes * num_samples_per_spoke
@@ -45,13 +45,16 @@ plt.close()
 # Forward NUFFT
 c = nufft2(-xy, image)
 
+# Adjoint
+reco_adjoint = nufft1(xy, c, (N1, N2)) / M
+
 # Density compensation: weight by distance to center
 ram_lak = torch.linalg.norm(xy, dim=0)
-reco_analytic = nufft1(xy, c * ram_lak[None, None, ...], (N1, N2))
+reco_analytic = nufft1(xy, c * ram_lak[None, None, ...], (N1, N2)) / M
 
 # Inverse NUFFT
 density = get_density(xy, c, (N1, N2))
-reco = nufft_inv(xy, c, (N1, N2))
+reco = nufft1(xy, c * density, (N1, N2)) / M
 
 fig, axs = plt.subplots(1, 2, figsize=(15, 5))
 for spoke in range(num_spokes):
@@ -82,17 +85,21 @@ plt.show()
 plt.close()
 
 plt.figure(figsize=(15, 4))
-plt.subplot(1, 3, 1)
+plt.subplot(1, 4, 1)
 plt.imshow(image[0, 0].cpu().abs(), cmap="gray")
 plt.title("Shepp-Logan")
 plt.axis("off")
-plt.subplot(1, 3, 2)
-plt.imshow(reco_analytic[0, 0].cpu().abs(), cmap="gray")
-plt.title("Reconstruction (Analytic)")
+plt.subplot(1, 4, 2)
+plt.imshow(reco_adjoint[0, 0].cpu().abs(), cmap="gray")
+plt.title("Adjoint")
 plt.axis("off")
-plt.subplot(1, 3, 3)
+plt.subplot(1, 4, 3)
+plt.imshow(reco_analytic[0, 0].cpu().abs(), cmap="gray")
+plt.title("Inverse (Analytic)")
+plt.axis("off")
+plt.subplot(1, 4, 4)
 plt.imshow(reco[0, 0].cpu().abs(), cmap="gray")
-plt.title("Reconstruction")
+plt.title("Inverse")
 plt.axis("off")
 plt.show()
 plt.close()

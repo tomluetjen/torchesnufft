@@ -1,7 +1,7 @@
 import pytest
 import torch
 
-from torchesnufft.functional import nufft1, nufft2, nufft3, nufft_inv
+from torchesnufft.functional import get_density, nufft1, nufft2, nufft3
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -181,7 +181,8 @@ def test_nufft3(batch_size, channel_size, M, N, d):
 def check_nufft_inv(batch_size, channel_size, M, N):
     xyz, f, N, M = _generate_random_data_nufft2(batch_size, channel_size, M, N)
     nufft_result = nufft2(-xyz.to(device), f.to(device))
-    reco = nufft_inv(xyz.to(device), nufft_result, N) / torch.prod(torch.tensor(N))
+    density = get_density(xyz.to(device), nufft_result, N)
+    reco = nufft1(xyz.to(device), nufft_result * density, N) / M
     # TODO: investigate the influence of eps on accuracy
     assert torch.allclose(reco, f.to(device), atol=1e-1)
 
@@ -253,12 +254,12 @@ def test_nufft3_autograd(batch_size, channel_size, M, N, d):
     check_nufft3_autograd(batch_size, channel_size, M, N, d)
 
 
-def check_nufft_inv_autograd(batch_size, channel_size, M, N):
+def check_get_density_autograd(batch_size, channel_size, M, N):
     xyz, c, N, M = _generate_random_data_nufft1(batch_size, channel_size, M, N)
     xyz = xyz.to(dtype=torch.float64, device="cpu").requires_grad_()
     c = c.to(dtype=torch.complex128, device="cpu").requires_grad_()
     assert torch.autograd.gradcheck(
-        nufft_inv,
+        get_density,
         (xyz, c, N),
         nondet_tol=1e-8,
     )
@@ -268,5 +269,5 @@ def check_nufft_inv_autograd(batch_size, channel_size, M, N):
 @pytest.mark.parametrize("channel_size", [1, 3])
 @pytest.mark.parametrize("M", [8, 11])
 @pytest.mark.parametrize("N", [(3,), (2, 5), (4, 3, 4)])
-def test_nufft_inv_autograd(batch_size, channel_size, M, N):
-    check_nufft_inv_autograd(batch_size, channel_size, M, N)
+def test_get_density_autograd(batch_size, channel_size, M, N):
+    check_get_density_autograd(batch_size, channel_size, M, N)

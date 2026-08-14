@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import torch
 
-from torchesnufft.functional import nufft2, nufft_inv
+from torchesnufft.functional import get_density, nufft1, nufft2
 
 
 def make_signal(n, device):
@@ -23,17 +23,24 @@ signal = signal.unsqueeze(0).unsqueeze(0)
 # Random points in [-pi, pi]
 x = torch.rand((1, M), device=device) * 2 * torch.pi - torch.pi
 
-# Forward and inverse transforms.
+# Forward, adjoint and inverse transforms.
 c = nufft2(-x, signal)
-reco = nufft_inv(x, c, (N,)) / N
 
+reco_adjoint = nufft1(x, c, (N,)) / M
+
+density = get_density(x, c, (N,))
+reco = nufft1(x, c * density, (N,)) / M
+
+mse_adjoint = torch.mean(torch.abs(reco_adjoint - signal) ** 2).item()
 mse = torch.mean(torch.abs(reco - signal) ** 2).item()
-print(f"MSE: {mse:.2e}")
+print(f"MSE (Adjoint): {mse_adjoint:.2e}")
+print(f"MSE (Inverse): {mse:.2e}")
 
-fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 7), constrained_layout=True)
+fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 10), constrained_layout=True)
 
 ax1.plot(t.cpu(), signal[0, 0].abs().cpu(), label="Ground-truth", linewidth=2)
-ax1.plot(t.cpu(), reco[0, 0].abs().cpu(), "--", label="Reconstruction", linewidth=2)
+ax1.plot(t.cpu(), reco_adjoint[0, 0].abs().cpu(), "--", label="Adjoint", linewidth=2)
+ax1.plot(t.cpu(), reco[0, 0].abs().cpu(), "--", label="Inverse", linewidth=2)
 ax1.set_xlabel("Time [a.u.]")
 ax1.set_ylabel("Signal intensity [a.u.]")
 ax1.legend()
