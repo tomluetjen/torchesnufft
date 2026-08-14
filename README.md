@@ -1,6 +1,6 @@
 # torchesnufft
 
-[![LICENSE](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![Python](https://img.shields.io/badge/python-3.11%20|%203.12%20|%203.13-blue)](#) [![CI](https://github.com/tomluetjen/torchesnufft/actions/workflows/python-app.yml/badge.svg?branch=main)](https://github.com/tomluetjen/torchesnufft/actions/workflows/python-app.yml) [![Coverage](https://codecov.io/gh/tomluetjen/torchesnufft/branch/main/graph/badge.svg)](https://codecov.io/gh/tomluetjen/torchesnufft)
+[![LICENSE](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![Python](https://img.shields.io/badge/python-3.11%20|%203.12%20|%203.13-blue)](#) [![PyPI](https://img.shields.io/pypi/v/torchesnufft.svg?label=PyPI&logo=pypi)](https://pypi.org/project/torchesnufft/) [![CI](https://github.com/tomluetjen/torchesnufft/actions/workflows/python-app.yml/badge.svg?branch=main)](https://github.com/tomluetjen/torchesnufft/actions/workflows/python-app.yml) [![Coverage](https://codecov.io/gh/tomluetjen/torchesnufft/branch/main/graph/badge.svg)](https://codecov.io/gh/tomluetjen/torchesnufft)
 
 ## About
 `torchesnufft` implements the non-uniform fast Fourier transform (Type 1, Type 2 & Type 3) with an exponential of semicircle kernel [1, 2] and a simple density compensation routine [3] in PyTorch. All transforms work with batched multi-channel data and are fully differentiable. This allows backpropagation through `torchesnufft` transforms to train neural networks or to solve optimization problems with [`torch.optim`](https://docs.pytorch.org/docs/stable/optim.html).
