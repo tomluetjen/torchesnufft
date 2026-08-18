@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "torchesnufft"
-version = "0.1.1"
+version = "0.1.2"
 description = "A differentiable implementation of the non-uniform fast Fourier transform with an exponential of semicircle kernel in PyTorch"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -50,7 +50,7 @@ Issues = "https://github.com/tomluetjen/torchesnufft/issues"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["torchesnufft"]
+include = ["torchesnufft*"]
 exclude = ["tests*", "examples*", "benchmarks*"]
 
 [tool.ruff]
